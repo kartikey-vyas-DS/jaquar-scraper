@@ -53,7 +53,7 @@ jobs:
         run: pip install requests beautifulsoup4
 
       - name: Run scraper for batch ${{ matrix.batch }}
-        run: python scraper.py ${{ matrix.batch }}
+        run: jaquar_scraper.py ${{ matrix.batch }}
         env:
           BATCH_SIZE_OVERRIDE: ${{ github.event.inputs.batch_size }}
 
