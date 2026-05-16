@@ -41,6 +41,7 @@ jobs:
       matrix:
         batch: ${{ fromJson(needs.prepare.outputs.matrix) }}
       fail-fast: false          # if one batch fails, others keep going
+      max-parallel: 100        
 
     steps:
       - uses: actions/checkout@v4
