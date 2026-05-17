@@ -15,9 +15,9 @@ OUTPUT_CSV      = "jaquar_products.csv"
 SKU_FILE        = "skus.txt"          # one SKU per line
 BATCH_SIZE      = int(os.environ.get("BATCH_SIZE_OVERRIDE", 500))  # overridable via env
 SLEEP_BETWEEN   = 2                   # seconds between requests
-REQUEST_TIMEOUT = 15
-MAX_RETRIES     = 3                   # per-SKU retry attempts
-RETRY_BACKOFF   = 5                   # seconds added per retry
+REQUEST_TIMEOUT = 8
+MAX_RETRIES     = 1                   # per-SKU retry attempts
+RETRY_BACKOFF   = 2                   # seconds added per retry
 
 # ------------------------------------------------------------
 # Logging setup
@@ -56,14 +56,14 @@ COLOUR_SKU_TO_TITLE = {
 CSV_FIELDS = ["sku", "product_name", "image_url", "error"]
 
 def load_completed_skus(output_csv):
-    """Return a set of SKUs already present in the output CSV."""
     done = set()
     if not os.path.exists(output_csv):
         return done
     with open(output_csv, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            if row.get("sku"):
+            # Only skip if it actually succeeded (has image_url, no error)
+            if row.get("sku") and row.get("image_url") and not row.get("error"):
                 done.add(row["sku"].strip())
     log.info(f"Checkpoint: {len(done)} SKUs already completed, skipping them.")
     return done
