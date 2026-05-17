@@ -39,7 +39,7 @@ COLOUR_SKU_TO_TITLE = {
     "CHR": "Chrome",
     "BCH": "Black Chrome",
     "BLM": "Black Matt",
-    "BGP": "Blush Gold Bright PVD",
+    "BGP": "Blush Gold PVD",
     "GBP": "Gold Bright PVD",
     "ACR": "Antique Copper",          
     "ABR": "Antique Bronze",
