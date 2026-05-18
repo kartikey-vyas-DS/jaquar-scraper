@@ -46,6 +46,7 @@ COLOUR_SKU_TO_TITLE = {
     "GMP": "Gold Matt PVD",
     "GRF": "Graphite",
     "SSF": "Stainless Steel",
+    "WHT": "White",
     "BGM": "Lever: Gold Matt PVD | Body: Black Matt",
     "BBC": "Lever: Black Chrome | Body: Black Matt",
     "GMG": "Lever: Gold Bright PVD | Body: Gold Matt PVD",
