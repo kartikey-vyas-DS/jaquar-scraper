@@ -1,0 +1,88 @@
+name: Artize Essco Scraper
+
+on:
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: "SKUs per batch (default 500)"
+        required: false
+        default: "500"
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Count SKUs and build batch matrix
+        id: set-matrix
+        run: |
+          TOTAL=$(wc -l < skus_pending.txt)
+          BATCH_SIZE=${{ github.event.inputs.batch_size }}
+          NUM_BATCHES=$(( (TOTAL + BATCH_SIZE - 1) / BATCH_SIZE ))
+          echo "Total SKUs: $TOTAL, Batches: $NUM_BATCHES"
+          MATRIX=$(python3 -c "import json; print(json.dumps(list(range($NUM_BATCHES))))")
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+
+  scrape:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        batch: ${{ fromJson(needs.prepare.outputs.matrix) }}
+      fail-fast: false
+      max-parallel: 100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+      - name: Run scraper for batch ${{ matrix.batch }}
+        run: python artize_essco_scraper.py ${{ matrix.batch }}
+        env:
+          BATCH_SIZE_OVERRIDE: ${{ github.event.inputs.batch_size }}
+      - name: Upload batch result
+        uses: actions/upload-artifact@v4
+        with:
+          name: batch-${{ matrix.batch }}
+          path: artize_essco_products.csv
+          if-no-files-found: warn
+
+  merge:
+    needs: scrape
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all batch artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: batch_outputs
+      - name: Merge CSVs
+        run: |
+          python3 - <<'EOF'
+          import csv, glob
+          output_file = "artize_essco_final.csv"
+          fields = ["sku", "product_name", "image_url", "source", "error"]
+          seen_skus = set()
+          with open(output_file, "w", newline="", encoding="utf-8") as out_f:
+              writer = csv.DictWriter(out_f, fieldnames=fields)
+              writer.writeheader()
+              for csv_file in sorted(glob.glob("batch_outputs/batch-*/artize_essco_products.csv")):
+                  print(f"Merging: {csv_file}")
+                  with open(csv_file, newline="", encoding="utf-8") as in_f:
+                      reader = csv.DictReader(in_f)
+                      for row in reader:
+                          sku = row.get("sku", "").strip()
+                          if sku and sku not in seen_skus:
+                              seen_skus.add(sku)
+                              writer.writerow({k: row.get(k, "") for k in fields})
+          print(f"Done. {len(seen_skus)} unique SKUs written to {output_file}")
+          EOF
+      - name: Upload final merged CSV
+        uses: actions/upload-artifact@v4
+        with:
+          name: FINAL-artize-essco-products
+          path: artize_essco_final.csv
